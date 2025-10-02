@@ -31,7 +31,7 @@ function App() {
   };
 
   // ---------------- Google Login ----------------
-  const handleCredentialResponse = async (response) => {
+  const handleCredentialResponse = useCallback(async (response) => {
     const idToken = response.credential;
     try {
       const res = await fetch(`${API_BASE_URL}/api/auth/google`, {
@@ -54,7 +54,7 @@ function App() {
       console.error(err);
       showNotification("Login error. Check console.", "error");
     }
-  };
+  }, []);
 
   // ---------------- Load Google Button ----------------
   useEffect(() => {
@@ -83,7 +83,7 @@ function App() {
         });
       });
     }
-  }, [loggedIn]);
+  }, [loggedIn, handleCredentialResponse]);
 
   // ---------------- Load Suggestions ----------------
   const loadSuggestions = useCallback(async () => {
@@ -213,7 +213,6 @@ function App() {
 
   return (
     <>
-      {/* ---------------- LOGIN PAGE ---------------- */}
       {!loggedIn && (
         <>
           <header className="login-header">
@@ -251,10 +250,8 @@ function App() {
         </>
       )}
 
-      {/* ---------------- DASHBOARD ---------------- */}
       {loggedIn && (
         <>
-          {/* Notification */}
           {notification && (
             <div
               style={{
@@ -274,41 +271,37 @@ function App() {
             </div>
           )}
 
-          {/* Header */}
           <div style={{ marginTop: notification ? "50px" : "0", transition: "margin 0.3s ease" }}>
-  <header className={isAdmin ? "principal-header" : "header"}>
-    <h1 style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" }}>
-      {!isAdmin && (
-        <img
-          src="/student-svgrepo-com.svg"
-          alt="Student Logo"
-          style={{ width: "35px", height: "35px" }}
-        />
-      )}
-      {isAdmin
-        ? isPrincipal
-          ? "Principal Dashboard"
-          : `${department || "Admin"} Dashboard`
-        : "Student Dashboard"}
-    </h1>
-    <button className="logout-btn" onClick={handleLogout}>
-      Logout
-    </button>
-    <p style={{ textAlign: "center" }}>
-      Logged in as: <b>{email}</b>
-    </p>
-  </header>
-</div>
+            <header className={isAdmin ? "principal-header" : "header"}>
+              <h1 style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" }}>
+                {!isAdmin && (
+                  <img
+                    src="/student-svgrepo-com.svg"
+                    alt="Student Logo"
+                    style={{ width: "35px", height: "35px" }}
+                  />
+                )}
+                {isAdmin
+                  ? isPrincipal
+                    ? "Principal Dashboard"
+                    : `${department || "Admin"} Dashboard`
+                  : "Student Dashboard"}
+              </h1>
+              <button className="logout-btn" onClick={handleLogout}>
+                Logout
+              </button>
+              <p style={{ textAlign: "center" }}>
+                Logged in as: <b>{email}</b>
+              </p>
+            </header>
+          </div>
 
-
-          {/* Refresh */}
           <div style={{ textAlign: "center", margin: "15px 0" }}>
             <button className="btn refresh-btn" onClick={handleRefresh} disabled={loading}>
               {loading ? <span className="spinner"></span> : "Refresh"}
             </button>
           </div>
 
-          {/* Suggestion Form (Student Only) */}
           {!isAdmin && (
             <div className="container">
               <div className="card">
@@ -417,46 +410,28 @@ function App() {
                         {(s.description || "").length > 50 ? "..." : ""}
                       </td>
                       <td>
-                        <span className={`status ${s.status}`}>
-                          {s.status} {s.updatedBy ? `(${s.updatedBy})` : ""}
-                        </span>
+                        <span className={`status ${s.status}`}>{s.status} {s.updatedBy ? `(${s.updatedBy})` : ""}</span>
                       </td>
                       <td>{s.email}</td>
                       <td>{new Date(s.createdAt).toLocaleString()}</td>
                       <td>
                         <div className="dashboard-buttons">
-                          <button className="btn btn-view" onClick={() => handleView(s._id)}>
-                            View
-                          </button>
+                          <button className="btn btn-view" onClick={() => handleView(s._id)}>View</button>
                           {isAdmin && !["resolved", "invalid"].includes(s.status) && (
                             <>
-                              {s.status !== "in-progress" && (
-                                <button className="btn btn-view" onClick={() => handleStatusChange(s._id, "in-progress")}>
-                                  In Progress
-                                </button>
-                              )}
-                              <button className="btn btn-view" onClick={() => handleStatusChange(s._id, "resolved")}>
-                                Resolve
-                              </button>
-                              <button className="btn btn-invalid" onClick={() => handleStatusChange(s._id, "invalid")}>
-                                Invalid
-                              </button>
+                              {s.status !== "in-progress" && <button className="btn btn-view" onClick={() => handleStatusChange(s._id, "in-progress")}>In Progress</button>}
+                              <button className="btn btn-view" onClick={() => handleStatusChange(s._id, "resolved")}>Resolve</button>
+                              <button className="btn btn-invalid" onClick={() => handleStatusChange(s._id, "invalid")}>Invalid</button>
                             </>
                           )}
-                          {!isAdmin && (
-                            <button className="btn btn-delete" onClick={() => handleDelete(s._id)}>
-                              Delete
-                            </button>
-                          )}
+                          {!isAdmin && <button className="btn btn-delete" onClick={() => handleDelete(s._id)}>Delete</button>}
                         </div>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7} style={{ textAlign: "center" }}>
-                      No suggestions found
-                    </td>
+                    <td colSpan={7} style={{ textAlign: "center" }}>No suggestions found</td>
                   </tr>
                 )}
               </tbody>
@@ -468,18 +443,9 @@ function App() {
             <div className="view-suggestion" onClick={closeView}>
               <div className="view-content" onClick={(e) => e.stopPropagation()}>
                 <h2>{viewSuggestion.title}</h2>
-                <p>
-                  <strong>Description:</strong> {viewSuggestion.description}
-                </p>
-                <p>
-                  <strong>Category:</strong> {viewSuggestion.category}
-                </p>
-                <p>
-                  <strong>Status:</strong>{" "}
-                  <span className={`status ${viewSuggestion.status.replace(" ", "-").toLowerCase()}`}>
-                    {viewSuggestion.status}
-                  </span>
-                </p>
+                <p><strong>Description:</strong> {viewSuggestion.description}</p>
+                <p><strong>Category:</strong> {viewSuggestion.category}</p>
+                <p><strong>Status:</strong> <span className={`status ${viewSuggestion.status.replace(" ", "-").toLowerCase()}`}>{viewSuggestion.status}</span></p>
                 {viewSuggestion.department && <p><strong>Department:</strong> {viewSuggestion.department}</p>}
                 {viewSuggestion.updatedBy && <p><strong>Updated By:</strong> {viewSuggestion.updatedBy}</p>}
                 <p><strong>Submitted By:</strong> {viewSuggestion.email}</p>
