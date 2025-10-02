@@ -231,3 +231,11 @@ html, body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; backg
 .toast.error { background-color: #e53e3e; }
 .toast.info { background-color: #3182ce; }
 .toast.warning { background-color: #f6ad55; }
+/* ===== Google Button Wrapper (Always Centered) ===== */
+.google-btn-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 12px 0;
+    width: 100%;
+}

@@ -247,7 +247,10 @@ function App() {
               <p className="login-description">
                 Login with your <b>@ybit.ac.in</b> email to submit suggestions and complaints.
               </p>
-              <div ref={googleButtonRef}></div>
+              {/* ===== Google Button Wrapper ===== */}
+        <div className="google-btn-wrapper">
+          <div ref={googleButtonRef}></div>
+        </div>
               <p className="login-note">Use only your official college email address</p>
               <div className="college-link-container">
                 <a href="https://ybinstitute.com/" target="_blank" rel="noopener noreferrer" className="college-link">
