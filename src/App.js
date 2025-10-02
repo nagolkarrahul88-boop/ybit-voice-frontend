@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import "./App.css";
 
+// ---------------- Environment Variables ----------------
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+
 
 function App() {
   // ---------------- States ----------------
@@ -11,6 +13,7 @@ function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isPrincipal, setIsPrincipal] = useState(false);
   const [department, setDepartment] = useState("");
+
   const [suggestions, setSuggestions] = useState([]);
   const [viewSuggestion, setViewSuggestion] = useState(null);
 
@@ -21,7 +24,6 @@ function App() {
   const [loading, setLoading] = useState(false);
 
   const [notification, setNotification] = useState(null);
-
   const googleButtonRef = useRef(null);
 
   // ---------------- Notification ----------------
@@ -32,67 +34,72 @@ function App() {
 
   // ---------------- Google Login ----------------
   const handleCredentialResponse = useCallback(async (response) => {
-    const idToken = response.credential;
+    if (!response?.credential) return showNotification("No credential returned", "error");
+
     try {
       const res = await fetch(`${API_BASE_URL}/api/auth/google`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: idToken }),
+        body: JSON.stringify({ token: response.credential }),
       });
       const result = await res.json();
+
       if (res.ok) {
         setEmail(result.email);
         setIsAdmin(result.isAdmin || false);
         setIsPrincipal(result.isPrincipal || false);
         setDepartment(result.department || "");
         setLoggedIn(true);
-        showNotification("Logged in successfully!", "success");
+        showNotification("Logged in successfully!");
       } else {
         showNotification(result.error || "Login failed", "error");
       }
     } catch (err) {
-      console.error(err);
+      console.error("Login error:", err);
       showNotification("Login error. Check console.", "error");
     }
   }, []);
 
-  // ---------------- Load Google Button ----------------
+  // ---------------- Load Google Script ----------------
   useEffect(() => {
-    if (!loggedIn) {
-      if (googleButtonRef.current) googleButtonRef.current.innerHTML = "";
-      const loadGoogleScript = () =>
-        new Promise((resolve) => {
-          if (window.google) return resolve();
-          const script = document.createElement("script");
-          script.src = "https://accounts.google.com/gsi/client";
-          script.async = true;
-          script.defer = true;
-          script.onload = resolve;
-          document.head.appendChild(script);
-        });
-      loadGoogleScript().then(() => {
-        window.google.accounts.id.initialize({
-          client_id: GOOGLE_CLIENT_ID,
-          callback: handleCredentialResponse,
-        });
-        window.google.accounts.id.renderButton(googleButtonRef.current, {
-          theme: "filled_blue",
-          size: "large",
-          type: "standard",
-          text: "signin_with",
-        });
+    if (loggedIn) return;
+    if (googleButtonRef.current) googleButtonRef.current.innerHTML = "";
+
+    const loadGoogleScript = () =>
+      new Promise((resolve) => {
+        if (window.google) return resolve();
+        const script = document.createElement("script");
+        script.src = "https://accounts.google.com/gsi/client";
+        script.async = true;
+        script.defer = true;
+        script.onload = resolve;
+        document.head.appendChild(script);
       });
-    }
+
+    loadGoogleScript().then(() => {
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleCredentialResponse,
+      });
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        theme: "filled_blue",
+        size: "large",
+        type: "standard",
+        text: "signin_with",
+      });
+    });
   }, [loggedIn, handleCredentialResponse]);
 
   // ---------------- Load Suggestions ----------------
   const loadSuggestions = useCallback(async () => {
     if (!email) return;
+
     try {
       const url = isAdmin
         ? `${API_BASE_URL}/api/admin/suggestions?email=${encodeURIComponent(email)}`
         : `${API_BASE_URL}/api/student/suggestions?email=${encodeURIComponent(email)}`;
       const res = await fetch(url);
+
       if (!res.ok) {
         const err = await res.json();
         console.error("Load suggestions error:", err);
@@ -103,7 +110,7 @@ function App() {
       const data = await res.json();
       setSuggestions(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error(err);
+      console.error("Load suggestions error:", err);
       setSuggestions([]);
       showNotification("Failed to load suggestions. Check console.", "error");
     }
@@ -133,14 +140,14 @@ function App() {
       }
       setSuggestions((prev) => prev.filter((s) => s._id !== id));
       if (viewSuggestion && viewSuggestion._id === id) setViewSuggestion(null);
-      showNotification("Suggestion deleted successfully!", "success");
+      showNotification("Suggestion deleted successfully!");
     } catch (err) {
-      console.error(err);
+      console.error("Delete error:", err);
       showNotification("Delete failed. Check console.", "error");
     }
   };
 
-  // ---------------- Status Change ----------------
+  // ---------------- Status Update ----------------
   const handleStatusChange = async (id, status) => {
     try {
       const updatedBy = isPrincipal ? "Principal" : "HOD";
@@ -150,15 +157,16 @@ function App() {
         body: JSON.stringify({ status, updatedBy }),
       });
       const updated = await res.json();
+
       if (res.ok) {
         setSuggestions((prev) => prev.map((s) => (s._id === id ? updated : s)));
         if (viewSuggestion && viewSuggestion._id === id) setViewSuggestion(updated);
-        showNotification(`Status updated to "${status}"`, "success");
+        showNotification(`Status updated to "${status}"`);
       } else {
         showNotification(updated.error || "Status update failed", "error");
       }
     } catch (err) {
-      console.error(err);
+      console.error("Status update error:", err);
       showNotification("Status update failed. Check console.", "error");
     }
   };
@@ -171,19 +179,20 @@ function App() {
         : `${API_BASE_URL}/api/student/suggestions/view/${id}?email=${encodeURIComponent(email)}`;
       const res = await fetch(url);
       const data = await res.json();
+
       if (!res.ok) {
-        showNotification(data?.error || "Failed to load suggestion details.", "error");
+        showNotification(data?.error || "Failed to load suggestion details", "error");
         return;
       }
       setViewSuggestion(data);
     } catch (err) {
-      console.error(err);
+      console.error("View suggestion error:", err);
       showNotification("Failed to load suggestion details. Check console.", "error");
     }
   };
   const closeView = () => setViewSuggestion(null);
 
-  // ---------------- Filtered & Sorted Suggestions ----------------
+  // ---------------- Filter & Sort ----------------
   const filteredSuggestions = suggestions
     .filter((s) => (statusFilter === "all" ? true : s.status === statusFilter))
     .filter((s) => (categoryFilter === "all" ? true : s.category === categoryFilter))
@@ -211,8 +220,10 @@ function App() {
     showNotification("Logged out successfully", "info");
   };
 
+  // ---------------- Render ----------------
   return (
     <>
+      {/* ---------- Not Logged In ---------- */}
       {!loggedIn && (
         <>
           <header className="login-header">
@@ -227,16 +238,14 @@ function App() {
               <img src="/approved-new.jpg" alt="Approved Logo" className="approval-logo" />
             </div>
           </header>
-
           <div className="approval-slider">
             <p>Approved by AICTE & DTE, Affiliated to Mumbai University.</p>
           </div>
-
           <div className="login-container">
             <div className="login-card">
               <h2 className="login-title">Student & Staff Suggestion Portal</h2>
               <p className="login-description">
-                Login with your <b>@ybit.ac.in</b> email to submit suggestions and complaints. Admins can review and resolve issues.
+                Login with your <b>@ybit.ac.in</b> email to submit suggestions and complaints.
               </p>
               <div ref={googleButtonRef}></div>
               <p className="login-note">Use only your official college email address</p>
@@ -250,8 +259,10 @@ function App() {
         </>
       )}
 
+      {/* ---------- Logged In ---------- */}
       {loggedIn && (
         <>
+          {/* Notification Bar */}
           {notification && (
             <div
               style={{
@@ -271,37 +282,24 @@ function App() {
             </div>
           )}
 
-          <div style={{ marginTop: notification ? "50px" : "0", transition: "margin 0.3s ease" }}>
-            <header className={isAdmin ? "principal-header" : "header"}>
-              <h1 style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" }}>
-                {!isAdmin && (
-                  <img
-                    src="/student-svgrepo-com.svg"
-                    alt="Student Logo"
-                    style={{ width: "35px", height: "35px" }}
-                  />
-                )}
-                {isAdmin
-                  ? isPrincipal
-                    ? "Principal Dashboard"
-                    : `${department || "Admin"} Dashboard`
-                  : "Student Dashboard"}
-              </h1>
-              <button className="logout-btn" onClick={handleLogout}>
-                Logout
-              </button>
-              <p style={{ textAlign: "center" }}>
-                Logged in as: <b>{email}</b>
-              </p>
-            </header>
-          </div>
+          {/* Header */}
+          <header className={isAdmin ? "principal-header" : "header"} style={{ marginTop: notification ? "50px" : "0" }}>
+            <h1 style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" }}>
+              {!isAdmin && <img src="/student-svgrepo-com.svg" alt="Student Logo" style={{ width: "35px", height: "35px" }} />}
+              {isAdmin ? (isPrincipal ? "Principal Dashboard" : `${department || "Admin"} Dashboard`) : "Student Dashboard"}
+            </h1>
+            <button className="logout-btn" onClick={handleLogout}>Logout</button>
+            <p style={{ textAlign: "center" }}>Logged in as: <b>{email}</b></p>
+          </header>
 
+          {/* Refresh Button */}
           <div style={{ textAlign: "center", margin: "15px 0" }}>
             <button className="btn refresh-btn" onClick={handleRefresh} disabled={loading}>
               {loading ? <span className="spinner"></span> : "Refresh"}
             </button>
           </div>
 
+          {/* Suggestion Form (Students Only) */}
           {!isAdmin && (
             <div className="container">
               <div className="card">
@@ -323,7 +321,7 @@ function App() {
                       }
                       e.target.reset();
                       await loadSuggestions();
-                      showNotification("Suggestion submitted!", "success");
+                      showNotification("Suggestion submitted!");
                     } catch (err) {
                       console.error(err);
                       showNotification("Submit failed. Check console.", "error");
@@ -351,9 +349,7 @@ function App() {
                     <label>Description</label>
                     <textarea name="description" rows="4" required></textarea>
                   </div>
-                  <button type="submit" className="btn">
-                    Submit
-                  </button>
+                  <button type="submit" className="btn">Submit</button>
                 </form>
               </div>
             </div>
@@ -405,10 +401,7 @@ function App() {
                     <tr key={s._id}>
                       <td>{s.title}</td>
                       <td>{s.category}</td>
-                      <td>
-                        {(s.description || "").slice(0, 50)}
-                        {(s.description || "").length > 50 ? "..." : ""}
-                      </td>
+                      <td>{(s.description || "").slice(0, 50)}{(s.description || "").length > 50 ? "..." : ""}</td>
                       <td>
                         <span className={`status ${s.status}`}>{s.status} {s.updatedBy ? `(${s.updatedBy})` : ""}</span>
                       </td>
@@ -445,7 +438,7 @@ function App() {
                 <h2>{viewSuggestion.title}</h2>
                 <p><strong>Description:</strong> {viewSuggestion.description}</p>
                 <p><strong>Category:</strong> {viewSuggestion.category}</p>
-                <p><strong>Status:</strong> <span className={`status ${viewSuggestion.status.replace(" ", "-").toLowerCase()}`}>{viewSuggestion.status}</span></p>
+                <p><strong>Status:</strong> <span className={`status ${viewSuggestion.status}`}>{viewSuggestion.status}</span></p>
                 {viewSuggestion.department && <p><strong>Department:</strong> {viewSuggestion.department}</p>}
                 {viewSuggestion.updatedBy && <p><strong>Updated By:</strong> {viewSuggestion.updatedBy}</p>}
                 <p><strong>Submitted By:</strong> {viewSuggestion.email}</p>
