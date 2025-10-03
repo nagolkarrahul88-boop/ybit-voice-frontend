@@ -5,7 +5,6 @@ import "./App.css";
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
-
 function App() {
   // ---------------- States ----------------
   const [loggedIn, setLoggedIn] = useState(false);
@@ -247,10 +246,9 @@ function App() {
               <p className="login-description">
                 Login with your <b>@ybit.ac.in</b> email to submit suggestions and complaints.
               </p>
-              {/* ===== Google Button Wrapper ===== */}
-        <div className="google-btn-wrapper">
-          <div ref={googleButtonRef}></div>
-        </div>
+              <div className="google-btn-wrapper">
+                <div ref={googleButtonRef}></div>
+              </div>
               <p className="login-note">Use only your official college email address</p>
               <div className="college-link-container">
                 <a href="https://ybinstitute.com/" target="_blank" rel="noopener noreferrer" className="college-link">
