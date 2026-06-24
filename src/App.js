@@ -76,6 +76,7 @@ function App() {
       });
 
     loadGoogleScript().then(() => {
+      console.log("GOOGLE_CLIENT_ID =", GOOGLE_CLIENT_ID);
       window.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
         callback: handleCredentialResponse,
